@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  mysql-container:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ""          # mot de passe vide
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: db_product
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - mspr-net
+
+  product-service-container:
+    build: .
+    ports:
+      - "8089:8089"                    # mapping port hôte:conteneur = 8089
+    depends_on:
+      - mysql-container
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-container:3306/db_product?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ""
+      SERVER_PORT: 8089               # variable pour forcer Spring Boot à écouter sur 8089
+    networks:
+      - mspr-net
+
+volumes:
+  mysql-data:
+
+networks:
+  mspr-net:
