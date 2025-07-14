@@ -6,7 +6,6 @@ const {
   deleteOrder
 } = require('../services/order.service');
 
-// Créer une commande
 async function create(req, res) {
   try {
     const order = await createOrder(req.body);
@@ -16,7 +15,6 @@ async function create(req, res) {
   }
 }
 
-// Récupérer toutes les commandes
 async function findAll(req, res) {
   try {
     const orders = await getAllOrders();
@@ -26,7 +24,6 @@ async function findAll(req, res) {
   }
 }
 
-// Récupérer une commande par ID
 async function findOne(req, res) {
   try {
     const order = await getOrderById(req.params.id);
@@ -37,7 +34,6 @@ async function findOne(req, res) {
   }
 }
 
-// Mettre à jour une commande
 async function update(req, res) {
   try {
     const order = await updateOrder(req.params.id, req.body);
@@ -48,7 +44,6 @@ async function update(req, res) {
   }
 }
 
-// Supprimer une commande
 async function remove(req, res) {
   try {
     const order = await deleteOrder(req.params.id);

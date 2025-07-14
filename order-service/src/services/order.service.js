@@ -1,10 +1,14 @@
 
 const Order = require('../models/order.model');
+const { publishOrderEvent } = require('../utils/rabbitmq');
 
 async function createOrder(data) {
   const order = new Order(data);
-  return await order.save();
+  const saved = await order.save();
+  publishOrderEvent(saved); 
+  return saved;
 }
+
 
 async function getAllOrders() {
   return await Order.find();
