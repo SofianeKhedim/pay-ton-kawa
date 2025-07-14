@@ -1,4 +1,4 @@
-package com.example.mspr4.Tests;
+package com.example.mspr4;
 
 import com.example.mspr4.Controllers.ProductController;
 import com.example.mspr4.Entities.Product;
