@@ -3,12 +3,10 @@ package com.example.mspr4;
 import com.example.mspr4.Controllers.ProductController;
 import com.example.mspr4.Entities.Product;
 import com.example.mspr4.Services.IProductService;
-import com.example.mspr4.Controllers.ProductController;
-import com.example.mspr4.Entities.Product;
-import com.example.mspr4.Services.IProductService;
+
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test; // ✅ JUnit 5
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,10 +37,10 @@ public class ProductControllerTest {
     @Test
     public void testCreateProduct() throws Exception {
         Product product = new Product();
-        product.setNom("Produit Test");
+        product.setName("Produit Test");
         product.setDescription("Description test");
-        product.setPrix(9.99);
-        product.setQuantite(10);
+        product.setPrice(9.99);
+        product.setQuantity(10);
 
         when(productService.createProduct(any(Product.class))).thenReturn(product);
 
@@ -57,7 +55,7 @@ public class ProductControllerTest {
     public void testGetProductById() throws Exception {
         Product product = new Product();
         product.setId(1);
-        product.setNom("Produit A");
+        product.setName("Produit A");
 
         when(productService.getProductById(1)).thenReturn(product);
 

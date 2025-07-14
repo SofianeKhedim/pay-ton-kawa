@@ -30,10 +30,10 @@ public class ProductService implements IProductService {
     public Product updateProduct(Product product, int id) {
         Product existing = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
-        existing.setNom(product.getNom());
+        existing.setName(product.getName());
         existing.setDescription(product.getDescription());
-        existing.setPrix(product.getPrix());
-        existing.setQuantite(product.getQuantite());
+        existing.setPrice(product.getPrice());
+        existing.setQuantity(product.getQuantity());
         return productRepository.save(existing);
     }
 
@@ -68,7 +68,7 @@ public class ProductService implements IProductService {
     @Override
     public double totalStockValue() {
         return productRepository.findAll().stream()
-                .mapToDouble(p -> p.getPrix() * p.getQuantite())
+                .mapToDouble(p -> p.getPrice() * p.getQuantity())
                 .sum();
     }
 }

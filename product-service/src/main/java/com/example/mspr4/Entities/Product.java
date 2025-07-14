@@ -22,45 +22,5 @@ public class Product {
     private String description;
     private Double price;
     private Integer quantity;
-    // ----- Getters -----
-    public int getId() {
-        return id;
-    }
 
-    public String getNom() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public Double getPrix() {
-        return price;
-    }
-
-    public Integer getQuantite() {
-        return quantity;
-    }
-
-    // ----- Setters -----
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setNom(String nom) {
-        this.name = nom;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public void setPrix(Double prix) {
-        this.price = prix;
-    }
-
-    public void setQuantite(Integer quantite) {
-        this.quantity = quantite;
-    }
 }
