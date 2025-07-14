@@ -1,3 +1,68 @@
+#version: "3.8"
+#
+#services:
+#  rabbitmq:
+#    image: rabbitmq:3-management
+#    container_name: rabbitmq
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    networks:
+#      - mspr-net
+#
+#  order-service:
+#    build: ./order-service
+#    container_name: order-service
+#    ports:
+#      - "3000:3000"
+#    env_file:
+#      - ./order-service/.env
+#    depends_on:
+#      - rabbitmq
+#    networks:
+#      - mspr-net
+#  # MySQL
+#  mysql-container:
+#    image: mysql:8.0
+#    container_name: mysql-container
+#    environment:
+#      MYSQL_ROOT_PASSWORD: ""
+#      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+#      MYSQL_DATABASE: db_product
+#    ports:
+#      - "3306:3306"
+#    volumes:
+#      - mysql-data:/var/lib/mysql
+#    networks:
+#      - mspr-net
+#
+#
+#  # Product Service
+#  product-service:
+#    build:
+#      context: ./product-service
+#      dockerfile: prometheus.yml
+#    container_name: product-service
+#    ports:
+#      - "8089:8089"
+#    depends_on:
+#      - mysql-container
+#      - rabbitmq
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-container:3306/db_product?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+#      SPRING_DATASOURCE_USERNAME: root
+#      SPRING_DATASOURCE_PASSWORD: ""
+#      SERVER_PORT: 8089
+#    networks:
+#      - mspr-net
+#
+#
+#
+#volumes:
+#  mysql-data:
+#
+#networks:
+#  mspr-net:
 version: "3.8"
 
 services:
@@ -21,7 +86,7 @@ services:
       - rabbitmq
     networks:
       - mspr-net
-  # MySQL
+
   mysql-container:
     image: mysql:8.0
     container_name: mysql-container
@@ -36,8 +101,6 @@ services:
     networks:
       - mspr-net
 
-
-  # Product Service
   product-service:
     build:
       context: ./product-service
@@ -56,10 +119,43 @@ services:
     networks:
       - mspr-net
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - mspr-net
+
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - mspr-net
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - mspr-net
 
 
 volumes:
   mysql-data:
+  sonarqube_data:
+  sonarqube_extensions:
 
 networks:
   mspr-net:
