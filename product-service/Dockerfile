@@ -1,20 +1,23 @@
-# Étape 1 : Build avec Maven + Java 17
+# ---------- Étape 1 : build Maven ----------
 FROM maven:3.9.4-eclipse-temurin-17 AS builder
+WORKDIR /build
+COPY pom.xml .
+COPY src src
+RUN mvn -B clean package -DskipTests
 
+# ---------- Étape 2 : image d'exécution ----------
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
 
-# Étape 2 : Runtime avec app.jar
-FROM openjdk:17-jdk-slim
+# outil nc pour le wait-for
+RUN apk add --no-cache netcat-openbsd
 
-WORKDIR /app
+# --- script de veille ---
+COPY wait-for.sh /app/wait-for.sh
+RUN chmod +x /app/wait-for.sh
 
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+# --- jar Spring Boot ---
+COPY --from=builder /build/target/*SNAPSHOT.jar /app/app.jar
 
-COPY wait-for.sh wait-for.sh
-RUN chmod +x wait-for.sh
-
-COPY --from=builder /app/target/*.jar app.jar
-
-ENTRYPOINT ["./wait-for.sh", "mysql-container", "3306", "java", "-jar", "app.jar"]
+EXPOSE 8089
+ENTRYPOINT ["/app/wait-for.sh", "mysql-container", "3306", "--", "java", "-jar", "/app/app.jar"]

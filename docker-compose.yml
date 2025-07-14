@@ -21,36 +21,42 @@ services:
       - rabbitmq
     networks:
       - mspr-net
+  # MySQL
+  mysql-container:
+    image: mysql:8.0
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: db_product
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - mspr-net
 
-  # mysql-container:
-  #   image: mysql:8.0
-  #   container_name: mysql-container
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: ""
-  #     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-  #     MYSQL_DATABASE: db_product
-  #   ports:
-  #     - "3307:3306"
-  #   volumes:
-  #     - mysql-data:/var/lib/mysql
-  #   networks:
-  #     - mspr-net
 
-  # product-service:
-  #   build: ./product-service
-  #   container_name: product-service
-  #   ports:
-  #     - "8089:8089"
-  #   depends_on:
-  #     - mysql-container
-  #     - rabbitmq
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql-container:3306/db_product?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-  #     SPRING_DATASOURCE_USERNAME: root
-  #     SPRING_DATASOURCE_PASSWORD: ""
-  #     SERVER_PORT: 8089
-  #   networks:
-  #     - mspr-net
+  # Product Service
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    ports:
+      - "8089:8089"
+    depends_on:
+      - mysql-container
+      - rabbitmq
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-container:3306/db_product?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ""
+      SERVER_PORT: 8089
+    networks:
+      - mspr-net
+
+
 
 volumes:
   mysql-data:
