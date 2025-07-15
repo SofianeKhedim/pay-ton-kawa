@@ -1,6 +1,7 @@
 # version: "3.8"
 
 services:
+  # Message Queue
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -10,8 +11,10 @@ services:
     networks:
       - mspr-net
 
+  # Order Service
   order-service:
     build: ./order-service
+    platform: linux/amd64
     container_name: order-service
     ports:
       - "3000:3000"
@@ -22,8 +25,9 @@ services:
     networks:
       - mspr-net
 
+  # MySQL Database for Product Service
   mysql-container:
-    image: mysql:8.0
+    image: mariadb:10.11
     container_name: mysql-container
     environment:
       MYSQL_ROOT_PASSWORD: ""
@@ -36,10 +40,12 @@ services:
     networks:
       - mspr-net
 
+  # Product Service
   product-service:
     build:
       context: ./product-service
       dockerfile: Dockerfile
+    platform: linux/amd64
     container_name: product-service
     ports:
       - "8089:8089"
@@ -54,6 +60,60 @@ services:
     networks:
       - mspr-net
 
+  # PostgreSQL Database for Client API
+  postgres:
+    image: postgres:15-alpine
+    container_name: client-api-postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRES_DB: ${DB_NAME:-payetonkawa_clients}
+      POSTGRES_USER: ${DB_USERNAME:-payetonkawa_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - mspr-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-payetonkawa_user} -d ${DB_NAME:-payetonkawa_clients}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Client API
+  client-api:
+    build:
+      context: ./client-api
+      dockerfile: Dockerfile
+    container_name: client-api-app
+    env_file:
+      - ./client-api/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-payetonkawa_clients}
+      DB_USERNAME: ${DB_USERNAME:-payetonkawa_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: 8081
+      JAVA_OPTS: "-Xmx1g -Xms512m -XX:+UseG1GC"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mspr-net
+    restart: unless-stopped
+    volumes:
+      - app_logs:/app/logs
+
+  # Code Quality Analysis
   sonarqube:
     image: sonarqube:community
     container_name: sonarqube
@@ -67,7 +127,7 @@ services:
     networks:
       - mspr-net
 
-
+  # Monitoring
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -78,6 +138,7 @@ services:
     networks:
       - mspr-net
 
+  # Monitoring Dashboard
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -86,11 +147,13 @@ services:
     networks:
       - mspr-net
 
-
 volumes:
   mysql-data:
+  postgres_data:
+  app_logs:
   sonarqube_data:
   sonarqube_extensions:
 
 networks:
   mspr-net:
+    driver: bridge

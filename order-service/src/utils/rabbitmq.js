@@ -1,12 +1,11 @@
 const amqp = require("amqplib");
 const Order = require("../models/order.model");
-const { v4: uuidv4 } = require('uuid');
 let channel;
 
 async function connectRabbitMQ(retries = 5, delay = 3000) {
   while (retries > 0) {
     try {
-      const connection = await amqp.connect("amqp://localhost:5672");
+      const connection = await amqp.connect("amqp://rabbitmq:5672");
       channel = await connection.createChannel();
       await channel.assertQueue("order_events");
       await channel.assertQueue("stock_events");

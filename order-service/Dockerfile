@@ -10,11 +10,11 @@ RUN npm install
 COPY . .
 
 # Copier le script wait-for.sh et le rendre exécutable
-COPY wait-for.sh ./wait-for.sh
-RUN chmod +x ./wait-for.sh
+COPY wait-for.sh /app/wait-for.sh
+RUN chmod +x /app/wait-for.sh
 
 # Exposer le port de l'application
 EXPOSE 3000
 
 # Attendre que RabbitMQ soit prêt avant de démarrer app.js
-CMD ["./wait-for.sh", "rabbitmq", "5672", "node", "src/app.js"]
+CMD ["/app/wait-for.sh", "rabbitmq", "5672", "node", "src/app.js"]

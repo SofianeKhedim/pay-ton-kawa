@@ -1,6 +1,21 @@
-#!/bin/sh
-host="$1"; port="$2"; shift 2
+#!/bin/bash
+
+# Script wait-for.sh corrigé pour Docker
+set -e
+
+host="$1"
+port="$2"
+shift 2
+cmd="$@"
+
 echo "⏳ Attente de $host:$port..."
-until nc -z "$host" "$port"; do sleep 2; done
+
+until nc -z "$host" "$port"; do
+  echo "En attente de $host:$port..."
+  sleep 1
+done
+
 echo "✅ $host:$port prêt, on démarre !"
-exec "$@"
+
+# Exécution de la commande
+exec $cmd
