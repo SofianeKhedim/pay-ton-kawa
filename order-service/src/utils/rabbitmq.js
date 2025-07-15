@@ -28,7 +28,7 @@ async function connectRabbitMQ(retries = 5, delay = 3000) {
             `🔄 Statut commande ${orderId} mis à jour : ${newStatus}`
           );
 
-          channel.ack(msg); 
+          channel.ack(msg) ; 
         }
       });
 

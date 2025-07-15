@@ -17,7 +17,9 @@ async function create(req, res) {
 
 async function findAll(req, res) {
   try {
-    const orders = await getAllOrders();
+    const orders = await getAllOrders(
+      
+    );
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message } );
