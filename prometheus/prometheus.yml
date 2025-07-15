@@ -11,3 +11,9 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['order-service:3000']
+
+  - job_name: 'client-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'client-api-app:8081' ]
+
