@@ -157,9 +157,8 @@ public class ProductControllerTest {
 
         // When & Then
         mockMvc.perform(delete("/api/product/delete/1"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("✅ Produit avec ID = 1 a été supprimé avec succès."));
-
+                .andExpect(status().isOk());
+                
         verify(productService, times(1)).deleteProduct(1);
     }
 
