@@ -6,12 +6,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-
 @RequestMapping("/api/product")
 public class ProductController {
-
 
     private final IProductService productService;
 
@@ -19,6 +18,23 @@ public class ProductController {
         this.productService = productService;
     }
 
+    // LECTURE - Accessible à tous les utilisateurs authentifiés
+    @GetMapping("/{id}")
+    public Product getProductById(@PathVariable("id") int id) {
+        return productService.getProductById(id);
+    }
+
+    @GetMapping("/all")
+    public List<Product> getAllProducts() {
+        return productService.getAllProducts();
+    }
+
+    @GetMapping("/stock/total")
+    public double getTotalStockValue() {
+        return productService.totalStockValue();
+    }
+
+    // ÉCRITURE - Admin uniquement (optionnel, pour l'instant tous les authentifiés)
     @PostMapping("/create")
     public Product createProduct(@RequestBody Product product) {
         return productService.createProduct(product);
@@ -35,19 +51,14 @@ public class ProductController {
         return ResponseEntity.ok("✅ Produit avec ID = " + id + " a été supprimé avec succès.");
     }
 
-
-    @GetMapping("/{id}")
-    public Product getProductById(@PathVariable("id") int id) {
-        return productService.getProductById(id);
-    }
-
-    @GetMapping("/all")
-    public List<Product> getAllProducts() {
-        return productService.getAllProducts();
-    }
-
-    @GetMapping("/stock/total")
-    public double getTotalStockValue() {
-        return productService.totalStockValue();
+    // Health check - Public
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> health = Map.of(
+            "status", "UP",
+            "service", "product-api",
+            "timestamp", java.time.LocalDateTime.now()
+        );
+        return ResponseEntity.ok(health);
     }
 }
