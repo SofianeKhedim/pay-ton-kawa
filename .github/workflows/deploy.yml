@@ -1,22 +1,29 @@
-name: Selective Microservices Deploy
+# .github/workflows/ci.yml
+
+name: PayeTonKawa CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
 
 jobs:
+  # Détection des changements (même logique que le CD)
   detect-changes:
     runs-on: ubuntu-latest
+    name: 🔍 Detect Changes
     outputs:
       client-api: ${{ steps.changes.outputs.client-api }}
       order-service: ${{ steps.changes.outputs.order-service }}
       product-service: ${{ steps.changes.outputs.product-service }}
+      any-changes: ${{ steps.changes.outputs.any-changes }}
     steps:
     - name: 🔍 Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 2
-
+        
     - name: 🔍 Detect changes
       uses: dorny/paths-filter@v2
       id: changes
@@ -28,54 +35,285 @@ jobs:
             - 'order-service/**'
           product-service:
             - 'product-service/**'
+          any-changes:
+            - 'client-api/**'
+            - 'order-service/**'
+            - 'product-service/**'
 
-  deploy:
-    needs: detect-changes
+  # Tests Client API (seulement si modifié)
+  test-client-api:
     runs-on: ubuntu-latest
+    name: 🔐 Client API Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.client-api == 'true'
     
     steps:
-    - name: 🚀 Deploy to Digital Ocean
-      uses: appleboy/ssh-action@v1.0.0
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
       with:
-        host: ${{ secrets.DROPLET_IP }}
-        username: ${{ secrets.DROPLET_USER }}
-        password: ${{ secrets.DROPLET_PASSWORD }}
-        script: |
-          cd /root/pay-ton-kawa
-          git pull origin main
-          
-          SERVICES_TO_DEPLOY=""
-          
-          # Vérifier quels services ont changé
-          if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
-            echo "🔄 Client API modifié"
-            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY client-api-app"
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: 📦 Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-client-api-${{ hashFiles('client-api/**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-client-api-
+          ${{ runner.os }}-m2-
+        
+    - name: 🧪 Run Client API tests
+      working-directory: ./client-api
+      run: |
+        chmod +x mvnw
+        ./mvnw clean test -Dspring.profiles.active=test
+        
+    - name: 📊 Generate test report
+      working-directory: ./client-api
+      if: always()
+      run: ./mvnw surefire-report:report
+      
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: client-api-test-results
+        path: |
+          client-api/target/surefire-reports/
+          client-api/target/site/surefire-report.html
+
+  # Tests Product Service (seulement si modifié)
+  test-product-service:
+    runs-on: ubuntu-latest
+    name: 📦 Product Service Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.product-service == 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: 📦 Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-product-${{ hashFiles('product-service/**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-product-
+          ${{ runner.os }}-m2-
+        
+    - name: 🧪 Run Product Service tests
+      working-directory: ./product-service
+      run: |
+        chmod +x mvnw
+        ./mvnw clean test -Dspring.profiles.active=test
+        
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: product-service-test-results
+        path: product-service/target/surefire-reports/
+
+  # Tests Order Service (seulement si modifié)
+  test-order-service:
+    runs-on: ubuntu-latest
+    name: 🛒 Order Service Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.order-service == 'true'
+    
+    services:
+      mongodb:
+        image: mongo:5.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: password
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: order-service/package-lock.json
+        
+    - name: 📦 Install dependencies
+      working-directory: ./order-service
+      run: npm ci
+      
+    - name: 🧪 Run Order Service tests
+      working-directory: ./order-service
+      run: npm test
+      env:
+        NODE_ENV: test
+        MONGODB_URI: mongodb://root:password@localhost:27017/test?authSource=admin
+        JWT_SECRET: test-secret-key-for-ci
+        
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: order-service-test-results
+        path: |
+          order-service/coverage/
+          order-service/test-results.xml
+
+  # Build check (seulement pour les services modifiés)
+  build-check:
+    runs-on: ubuntu-latest
+    name: 🏗️ Build Check
+    needs: [detect-changes, test-client-api, test-product-service, test-order-service]
+    if: always() && needs.detect-changes.outputs.any-changes == 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    # Build Client API si modifié
+    - name: ☕ Set up JDK 17
+      if: needs.detect-changes.outputs.client-api == 'true' || needs.detect-changes.outputs.product-service == 'true'
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: 🏗️ Build Client API
+      if: needs.detect-changes.outputs.client-api == 'true'
+      working-directory: ./client-api
+      run: |
+        chmod +x mvnw
+        ./mvnw clean package -DskipTests
+        echo "✅ Client API built successfully"
+        
+    - name: 🏗️ Build Product Service
+      if: needs.detect-changes.outputs.product-service == 'true'
+      working-directory: ./product-service
+      run: |
+        chmod +x mvnw
+        ./mvnw clean package -DskipTests
+        echo "✅ Product Service built successfully"
+        
+    # Build Order Service si modifié
+    - name: 🟢 Set up Node.js
+      if: needs.detect-changes.outputs.order-service == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: order-service/package-lock.json
+        
+    - name: 🏗️ Build Order Service
+      if: needs.detect-changes.outputs.order-service == 'true'
+      working-directory: ./order-service
+      run: |
+        npm ci --production
+        echo "✅ Order Service built successfully"
+        
+    - name: ✅ Build Summary
+      run: |
+        echo "🎉 Build Summary:"
+        if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
+          echo "✅ Client API: Built successfully"
+        fi
+        if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
+          echo "✅ Product Service: Built successfully"
+        fi
+        if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
+          echo "✅ Order Service: Built successfully"
+        fi
+
+  # Test de validation finale
+  validation:
+    runs-on: ubuntu-latest
+    name: ✅ Final Validation
+    needs: [detect-changes, test-client-api, test-product-service, test-order-service, build-check]
+    if: always() && needs.detect-changes.outputs.any-changes == 'true'
+    
+    steps:
+    - name: 🔍 Check test results
+      run: |
+        echo "📊 Validation des résultats de tests:"
+        
+        # Vérifier Client API
+        if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
+          if [ "${{ needs.test-client-api.result }}" == "success" ]; then
+            echo "✅ Client API: Tests passed"
+          else
+            echo "❌ Client API: Tests failed"
+            exit 1
           fi
-          
-          if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
-            echo "🔄 Order Service modifié"
-            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY order-service"
+        fi
+        
+        # Vérifier Product Service
+        if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
+          if [ "${{ needs.test-product-service.result }}" == "success" ]; then
+            echo "✅ Product Service: Tests passed"
+          else
+            echo "❌ Product Service: Tests failed"
+            exit 1
           fi
-          
-          if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
-            echo "🔄 Product Service modifié"
-            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY product-service"
+        fi
+        
+        # Vérifier Order Service
+        if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
+          if [ "${{ needs.test-order-service.result }}" == "success" ]; then
+            echo "✅ Order Service: Tests passed"
+          else
+            echo "❌ Order Service: Tests failed"
+            exit 1
           fi
-          
-          if [ -z "$SERVICES_TO_DEPLOY" ]; then
-            echo "ℹ️ Aucun service à redéployer"
-            exit 0
-          fi
-          
-          echo "🔨 Rebuild des services modifiés: $SERVICES_TO_DEPLOY"
-          docker-compose build $SERVICES_TO_DEPLOY
-          
-          echo "♻️ Redéploiement des services: $SERVICES_TO_DEPLOY"
-          docker-compose stop $SERVICES_TO_DEPLOY
-          docker-compose rm -f $SERVICES_TO_DEPLOY
-          docker-compose up -d $SERVICES_TO_DEPLOY
-          
-          sleep 30
-          docker-compose ps
-          
-          echo "✅ Déploiement sélectif terminé !"
+        fi
+        
+        echo "🎉 Tous les tests sont passés ! Prêt pour le déploiement."
+
+  # Rapport final
+  ci-summary:
+    runs-on: ubuntu-latest
+    name: 📋 CI Summary
+    needs: [detect-changes, validation]
+    if: always()
+    
+    steps:
+    - name: 📋 Generate CI Summary
+      run: |
+        echo "# 📋 CI Summary Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🔍 Changes Detected:" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
+          echo "- ✅ Client API modified" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
+          echo "- ✅ Product Service modified" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
+          echo "- ✅ Order Service modified" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.detect-changes.outputs.any-changes }}" != "true" ]; then
+          echo "- ℹ️ No services modified" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Ready for Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "Les services modifiés sont prêts pour le déploiement automatique." >> $GITHUB_STEP_SUMMARY
