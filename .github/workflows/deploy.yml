@@ -40,7 +40,7 @@ jobs:
             - 'order-service/**'
             - 'product-service/**'
 
-  # Tests Client API (seulement si modifié)
+  # Tests Client API (Gradle)
   test-client-api:
     runs-on: ubuntu-latest
     name: Client API Tests
@@ -57,25 +57,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: Cache Maven dependencies
+    - name: Cache Gradle dependencies
       uses: actions/cache@v4
       with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-client-api-${{ hashFiles('client-api/**/pom.xml') }}
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-client-api-${{ hashFiles('client-api/**/*.gradle*', 'client-api/**/gradle-wrapper.properties') }}
         restore-keys: |
-          ${{ runner.os }}-m2-client-api-
-          ${{ runner.os }}-m2-
+          ${{ runner.os }}-gradle-client-api-
+          ${{ runner.os }}-gradle-
         
     - name: Run Client API tests
       working-directory: ./client-api
       run: |
-        chmod +x mvnw
-        ./mvnw clean test -Dspring.profiles.active=test
+        chmod +x gradlew
+        ./gradlew test -Dspring.profiles.active=test
         
     - name: Generate test report
       working-directory: ./client-api
       if: always()
-      run: ./mvnw surefire-report:report
+      run: ./gradlew jacocoTestReport
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -83,10 +85,10 @@ jobs:
       with:
         name: client-api-test-results
         path: |
-          client-api/target/surefire-reports/
-          client-api/target/site/surefire-report.html
+          client-api/build/reports/tests/test/
+          client-api/build/reports/jacoco/test/html/
 
-  # Tests Product Service (seulement si modifié)
+  # Tests Product Service (Maven)
   test-product-service:
     runs-on: ubuntu-latest
     name: Product Service Tests
@@ -115,8 +117,12 @@ jobs:
     - name: Run Product Service tests
       working-directory: ./product-service
       run: |
-        chmod +x mvnw
-        ./mvnw clean test -Dspring.profiles.active=test
+        if [ -f "mvnw" ]; then
+          chmod +x mvnw
+          ./mvnw clean test
+        else
+          mvn clean test
+        fi
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -125,7 +131,7 @@ jobs:
         name: product-service-test-results
         path: product-service/target/surefire-reports/
 
-  # Tests Order Service (seulement si modifié)
+  # Tests Order Service (Node.js)
   test-order-service:
     runs-on: ubuntu-latest
     name: Order Service Tests
@@ -201,17 +207,21 @@ jobs:
       if: needs.detect-changes.outputs.client-api == 'true'
       working-directory: ./client-api
       run: |
-        chmod +x mvnw
-        ./mvnw clean package -DskipTests
-        echo "✅ Client API built successfully"
+        chmod +x gradlew
+        ./gradlew clean bootJar -x test
+        echo "Client API built successfully"
         
     - name: Build Product Service
       if: needs.detect-changes.outputs.product-service == 'true'
       working-directory: ./product-service
       run: |
-        chmod +x mvnw
-        ./mvnw clean package -DskipTests
-        echo "✅ Product Service built successfully"
+        if [ -f "mvnw" ]; then
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+        else
+          mvn clean package -DskipTests
+        fi
+        echo "Product Service built successfully"
         
     # Build Order Service si modifié
     - name: Set up Node.js
