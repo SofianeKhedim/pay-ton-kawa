@@ -4,27 +4,27 @@ name: PayeTonKawa CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   # Détection des changements (même logique que le CD)
   detect-changes:
     runs-on: ubuntu-latest
-    name: 🔍 Detect Changes
+    name: Detect Changes
     outputs:
       client-api: ${{ steps.changes.outputs.client-api }}
       order-service: ${{ steps.changes.outputs.order-service }}
       product-service: ${{ steps.changes.outputs.product-service }}
       any-changes: ${{ steps.changes.outputs.any-changes }}
     steps:
-    - name: 🔍 Checkout
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 2
         
-    - name: 🔍 Detect changes
+    - name: Detect changes
       uses: dorny/paths-filter@v2
       id: changes
       with:
@@ -43,22 +43,22 @@ jobs:
   # Tests Client API (seulement si modifié)
   test-client-api:
     runs-on: ubuntu-latest
-    name: 🔐 Client API Tests
+    name: Client API Tests
     needs: detect-changes
     if: needs.detect-changes.outputs.client-api == 'true'
     
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: ☕ Set up JDK 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: 📦 Cache Maven dependencies
-      uses: actions/cache@v3
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-client-api-${{ hashFiles('client-api/**/pom.xml') }}
@@ -66,19 +66,19 @@ jobs:
           ${{ runner.os }}-m2-client-api-
           ${{ runner.os }}-m2-
         
-    - name: 🧪 Run Client API tests
+    - name: Run Client API tests
       working-directory: ./client-api
       run: |
         chmod +x mvnw
         ./mvnw clean test -Dspring.profiles.active=test
         
-    - name: 📊 Generate test report
+    - name: Generate test report
       working-directory: ./client-api
       if: always()
       run: ./mvnw surefire-report:report
       
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v3
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: client-api-test-results
@@ -89,22 +89,22 @@ jobs:
   # Tests Product Service (seulement si modifié)
   test-product-service:
     runs-on: ubuntu-latest
-    name: 📦 Product Service Tests
+    name: Product Service Tests
     needs: detect-changes
     if: needs.detect-changes.outputs.product-service == 'true'
     
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: ☕ Set up JDK 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: 📦 Cache Maven dependencies
-      uses: actions/cache@v3
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-product-${{ hashFiles('product-service/**/pom.xml') }}
@@ -112,14 +112,14 @@ jobs:
           ${{ runner.os }}-m2-product-
           ${{ runner.os }}-m2-
         
-    - name: 🧪 Run Product Service tests
+    - name: Run Product Service tests
       working-directory: ./product-service
       run: |
         chmod +x mvnw
         ./mvnw clean test -Dspring.profiles.active=test
         
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v3
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: product-service-test-results
@@ -128,7 +128,7 @@ jobs:
   # Tests Order Service (seulement si modifié)
   test-order-service:
     runs-on: ubuntu-latest
-    name: 🛒 Order Service Tests
+    name: Order Service Tests
     needs: detect-changes
     if: needs.detect-changes.outputs.order-service == 'true'
     
@@ -147,21 +147,21 @@ jobs:
           --health-retries 5
     
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: 🟢 Set up Node.js
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: order-service/package-lock.json
         
-    - name: 📦 Install dependencies
+    - name: Install dependencies
       working-directory: ./order-service
       run: npm ci
       
-    - name: 🧪 Run Order Service tests
+    - name: Run Order Service tests
       working-directory: ./order-service
       run: npm test
       env:
@@ -169,8 +169,8 @@ jobs:
         MONGODB_URI: mongodb://root:password@localhost:27017/test?authSource=admin
         JWT_SECRET: test-secret-key-for-ci
         
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v3
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: order-service-test-results
@@ -181,23 +181,23 @@ jobs:
   # Build check (seulement pour les services modifiés)
   build-check:
     runs-on: ubuntu-latest
-    name: 🏗️ Build Check
+    name: Build Check
     needs: [detect-changes, test-client-api, test-product-service, test-order-service]
     if: always() && needs.detect-changes.outputs.any-changes == 'true'
     
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
       
     # Build Client API si modifié
-    - name: ☕ Set up JDK 17
+    - name: Set up JDK 17
       if: needs.detect-changes.outputs.client-api == 'true' || needs.detect-changes.outputs.product-service == 'true'
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: 🏗️ Build Client API
+    - name: Build Client API
       if: needs.detect-changes.outputs.client-api == 'true'
       working-directory: ./client-api
       run: |
@@ -205,7 +205,7 @@ jobs:
         ./mvnw clean package -DskipTests
         echo "✅ Client API built successfully"
         
-    - name: 🏗️ Build Product Service
+    - name: Build Product Service
       if: needs.detect-changes.outputs.product-service == 'true'
       working-directory: ./product-service
       run: |
@@ -214,7 +214,7 @@ jobs:
         echo "✅ Product Service built successfully"
         
     # Build Order Service si modifié
-    - name: 🟢 Set up Node.js
+    - name: Set up Node.js
       if: needs.detect-changes.outputs.order-service == 'true'
       uses: actions/setup-node@v4
       with:
@@ -222,44 +222,44 @@ jobs:
         cache: 'npm'
         cache-dependency-path: order-service/package-lock.json
         
-    - name: 🏗️ Build Order Service
+    - name: Build Order Service
       if: needs.detect-changes.outputs.order-service == 'true'
       working-directory: ./order-service
       run: |
         npm ci --production
         echo "✅ Order Service built successfully"
         
-    - name: ✅ Build Summary
+    - name: Build Summary
       run: |
-        echo "🎉 Build Summary:"
+        echo "Build Summary:"
         if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
-          echo "✅ Client API: Built successfully"
+          echo "Client API: Built successfully"
         fi
         if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
-          echo "✅ Product Service: Built successfully"
+          echo "Product Service: Built successfully"
         fi
         if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
-          echo "✅ Order Service: Built successfully"
+          echo "Order Service: Built successfully"
         fi
 
   # Test de validation finale
   validation:
     runs-on: ubuntu-latest
-    name: ✅ Final Validation
+    name: Final Validation
     needs: [detect-changes, test-client-api, test-product-service, test-order-service, build-check]
     if: always() && needs.detect-changes.outputs.any-changes == 'true'
     
     steps:
-    - name: 🔍 Check test results
+    - name: Check test results
       run: |
-        echo "📊 Validation des résultats de tests:"
+        echo "Validation des résultats de tests:"
         
         # Vérifier Client API
         if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
           if [ "${{ needs.test-client-api.result }}" == "success" ]; then
-            echo "✅ Client API: Tests passed"
+            echo "Client API: Tests passed"
           else
-            echo "❌ Client API: Tests failed"
+            echo "Client API: Tests failed"
             exit 1
           fi
         fi
@@ -267,9 +267,9 @@ jobs:
         # Vérifier Product Service
         if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
           if [ "${{ needs.test-product-service.result }}" == "success" ]; then
-            echo "✅ Product Service: Tests passed"
+            echo "Product Service: Tests passed"
           else
-            echo "❌ Product Service: Tests failed"
+            echo "Product Service: Tests failed"
             exit 1
           fi
         fi
@@ -277,43 +277,43 @@ jobs:
         # Vérifier Order Service
         if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
           if [ "${{ needs.test-order-service.result }}" == "success" ]; then
-            echo "✅ Order Service: Tests passed"
+            echo "Order Service: Tests passed"
           else
-            echo "❌ Order Service: Tests failed"
+            echo "Order Service: Tests failed"
             exit 1
           fi
         fi
         
-        echo "🎉 Tous les tests sont passés ! Prêt pour le déploiement."
+        echo "Tous les tests sont passés ! Prêt pour le déploiement."
 
   # Rapport final
   ci-summary:
     runs-on: ubuntu-latest
-    name: 📋 CI Summary
+    name: CI Summary
     needs: [detect-changes, validation]
     if: always()
     
     steps:
-    - name: 📋 Generate CI Summary
+    - name: Generate CI Summary
       run: |
-        echo "# 📋 CI Summary Report" >> $GITHUB_STEP_SUMMARY
+        echo "# CI Summary Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## 🔍 Changes Detected:" >> $GITHUB_STEP_SUMMARY
+        echo "## Changes Detected:" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
-          echo "- ✅ Client API modified" >> $GITHUB_STEP_SUMMARY
+          echo "- Client API modified" >> $GITHUB_STEP_SUMMARY
         fi
         if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
-          echo "- ✅ Product Service modified" >> $GITHUB_STEP_SUMMARY
+          echo "- Product Service modified" >> $GITHUB_STEP_SUMMARY
         fi
         if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
-          echo "- ✅ Order Service modified" >> $GITHUB_STEP_SUMMARY
+          echo "- Order Service modified" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ "${{ needs.detect-changes.outputs.any-changes }}" != "true" ]; then
-          echo "- ℹ️ No services modified" >> $GITHUB_STEP_SUMMARY
+          echo "- No services modified" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## 🚀 Ready for Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "## Ready for Deployment" >> $GITHUB_STEP_SUMMARY
         echo "Les services modifiés sont prêts pour le déploiement automatique." >> $GITHUB_STEP_SUMMARY
