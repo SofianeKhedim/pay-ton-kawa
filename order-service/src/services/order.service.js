@@ -21,7 +21,7 @@ async function getAllOrders() {
         ...prod,
         name: productInfo?.name || "Nom inconnu",
         description: productInfo?.description || "Pas de description",
-        price: productInfo?.price || "Pas de price",
+        price: productInfo?.price || 2,
         
       };
     });
