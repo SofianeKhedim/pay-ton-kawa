@@ -19,6 +19,7 @@ import jakarta.annotation.PostConstruct;
 @EnableTransactionManagement
 public class DatabaseConfig {
 
+    
     private static final Logger logger = LoggerFactory.getLogger(DatabaseConfig.class);
 
     @PostConstruct
