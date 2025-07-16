@@ -1,7 +1,7 @@
 // services/productService.js
 const axios = require("axios");
 
-const PRODUCT_SERVICE_URL = "http://localhost:8089/api/product/all";
+const PRODUCT_SERVICE_URL = "http://134.122.92.14:8089/api/product/all";
 
 async function fetchAllProducts() {
   try {
