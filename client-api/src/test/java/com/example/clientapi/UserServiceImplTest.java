@@ -121,7 +121,6 @@ class UserServiceImplTest {
     void getUserById_ShouldReturnUser_WhenUserExists() {
         // Given
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-
         // When
         UserDto result = userService.getUserById(1L);
 
