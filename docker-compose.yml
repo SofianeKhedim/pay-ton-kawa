@@ -140,12 +140,26 @@ services:
 
   # Monitoring Dashboard
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:9.5.15  # Version stable spécifique
     container_name: grafana
+    platform: linux/amd64
     ports:
       - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+    user: "472:472"  # User/Group ID spécifique Grafana
     networks:
       - mspr-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    command: >
+      sh -c "chown -R 472:472 /var/lib/grafana &&
+             /run.sh"
 
 volumes:
   mysql-data:
@@ -153,6 +167,8 @@ volumes:
   app_logs:
   sonarqube_data:
   sonarqube_extensions:
+  grafana_data:
+  grafana_config:
 
 networks:
   mspr-net:

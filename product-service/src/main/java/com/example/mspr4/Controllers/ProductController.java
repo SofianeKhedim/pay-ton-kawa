@@ -2,7 +2,6 @@ package com.example.mspr4.Controllers;
 
 import com.example.mspr4.Entities.Product;
 import com.example.mspr4.Services.IProductService;
-import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
