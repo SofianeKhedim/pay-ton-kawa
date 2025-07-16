@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitConfig {
-
     public static final String ORDER_QUEUE = "order_events";
     public static final String STOCK_QUEUE = "stock_events";
 

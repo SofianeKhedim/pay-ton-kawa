@@ -4,6 +4,8 @@ require("dotenv").config();
 const orderRoutes = require("./routes/order.routes");
 const { connectRabbitMQ } = require("./utils/rabbitmq");
 const app = express();
+
+
 app.use(express.json());
 const cors = require("cors");
 
