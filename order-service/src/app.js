@@ -5,12 +5,19 @@ const orderRoutes = require("./routes/order.routes");
 const { connectRabbitMQ } = require("./utils/rabbitmq");
 const app = express();
 app.use(express.json());
+const cors = require("cors");
+
+
+app.use(cors({ origin: "*" }));
 
 
 /* ──────────── 🆕  Prometheus client ──────────── */
 const client = require("prom-client");
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();                       // métriques système + Node
+
+
+
 
 // ENDPOINT /metrics que Prometheus va scrapper
 app.get("/metrics", async (req, res) => {
