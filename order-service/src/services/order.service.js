@@ -10,7 +10,7 @@ async function createOrder(data) {
 }
 
 async function getAllOrders() {
-  const orders = await Order.find({}, { "products.quantity": 0 }).lean();
+  const orders = await Order.find().lean();
   const allProducts = await fetchAllProducts();
 // console.log("all pr info : ",allProducts)
   const enrichedOrders = orders.map(order => {
@@ -22,7 +22,7 @@ async function getAllOrders() {
         name: productInfo?.name || "Nom inconnu",
         description: productInfo?.description || "Pas de description",
         price: productInfo?.price || "Pas de price",
-        quantity: productInfo?.quantity || "Pas de quantity",
+        
       };
     });
 

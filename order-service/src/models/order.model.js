@@ -5,6 +5,8 @@ const orderSchema = new mongoose.Schema({
   products: [{ productId: "string", quantity: Number, price: Number }],
   orderStatus: { type: String, default: "pending" },
   createdAt: Date,
+},{
+  timestamps: true
 });
 
 
