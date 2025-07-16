@@ -71,7 +71,6 @@ public class UserController {
      * Récupère un utilisateur par son ID (le user lui-même ou admin).
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @userService.isOwner(#id, authentication.name)")
     @Operation(summary = "Récupérer un utilisateur par ID")
     public ResponseEntity<UserDto> getUserById(@Parameter(description = "ID de l'utilisateur") @PathVariable Long id) {
         logger.debug("Requête de récupération de l'utilisateur avec l'ID: {}", id);
