@@ -3,6 +3,12 @@ const Order = require("../models/order.model");
 let channel;
 
 async function connectRabbitMQ(retries = 5, delay = 3000) {
+  // 🆕 Skip RabbitMQ en mode test
+  if (process.env.NODE_ENV === 'test') {
+    console.log('⚠️ RabbitMQ skipped in test mode');
+    return;
+  }
+
   while (retries > 0) {
     try {
       const connection = await amqp.connect("amqp://rabbitmq:5672");
@@ -10,6 +16,7 @@ async function connectRabbitMQ(retries = 5, delay = 3000) {
       await channel.assertQueue("order_events");
       await channel.assertQueue("stock_events");
       console.log("✅ Connected to RabbitMQ");
+      
       channel.consume("stock_events", async (msg) => {
         if (msg !== null) {
           const content = JSON.parse(msg.content.toString());
@@ -27,7 +34,7 @@ async function connectRabbitMQ(retries = 5, delay = 3000) {
             `🔄 Statut commande ${orderId} mis à jour : ${newStatus}`
           );
 
-          channel.ack(msg) ; 
+          channel.ack(msg); 
         }
       });
 
@@ -39,7 +46,10 @@ async function connectRabbitMQ(retries = 5, delay = 3000) {
         console.error(
           "💥 Failed to connect to RabbitMQ after several attempts"
         );
-        process.exit(1);
+        // 🆕 Ne pas faire crash en mode test
+        if (process.env.NODE_ENV !== 'test') {
+          process.exit(1);
+        }
       }
       console.log(`🔁 Retrying in ${delay / 1000}s... (${retries} tries left)`);
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -48,7 +58,16 @@ async function connectRabbitMQ(retries = 5, delay = 3000) {
 }
 
 function publishOrderEvent(order) {
-  if (!channel) throw new Error("RabbitMQ channel not initialized");
+  // 🆕 Skip en mode test avec un mock
+  if (process.env.NODE_ENV === 'test') {
+    console.log('📧 Mock: Order event published for test -', order._id);
+    return;
+  }
+
+  if (!channel) {
+    console.warn("⚠️ RabbitMQ channel not initialized, skipping event");
+    return;
+  }
 
   const message = {
     event: "order_created",

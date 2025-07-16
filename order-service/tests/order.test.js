@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const Order = require('../src/models/order.model');
+
+// 🆕 Définir NODE_ENV=test AVANT d'importer les services
+process.env.NODE_ENV = 'test';
+
 const {
   createOrder,
   getAllOrders,
