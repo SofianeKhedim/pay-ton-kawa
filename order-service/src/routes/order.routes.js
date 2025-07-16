@@ -1,12 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
-// Routes CRUD pour les commandes
-router.post('/orders', orderController.create);       // Créer une commande
-router.get('/orders', orderController.findAll);       // Lister toutes les commandes
-router.get('/orders/:id', orderController.findOne);   // Détails d’une commande
-router.put('/orders/:id', orderController.update);    // Modifier une commande
-router.delete('/orders/:id', orderController.remove); // Supprimer une commande
+// Health check - Public (AVANT les middlewares protégés)
+router.get('/health', (req, res) => {
+    res.json({
+        status: 'UP',
+        service: 'order-api',
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+    });
+});
+
+// Routes protégées par JWT
+router.get('/orders', authenticateToken, orderController.findAll);
+router.get('/orders/:id', authenticateToken, orderController.findOne);
+router.post('/orders', authenticateToken, orderController.create);
+router.put('/orders/:id', authenticateToken, orderController.update);
+
+// Route admin uniquement
+router.delete('/orders/:id', authenticateToken, requireAdmin, orderController.remove);
 
 module.exports = router;

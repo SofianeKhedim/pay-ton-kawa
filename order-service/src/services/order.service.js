@@ -9,9 +9,9 @@ async function createOrder(data) {
   return saved;
 }
 
-async function getAllOrders() {
+async function getAllOrders(req) {
   const orders = await Order.find().lean();
-  const allProducts = await fetchAllProducts();
+  const allProducts = await fetchAllProducts(req);
 // console.log("all pr info : ",allProducts)
   const enrichedOrders = orders.map(order => {
     const enrichedProducts = order.products.map(prod => {
