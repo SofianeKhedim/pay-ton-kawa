@@ -1,0 +1,81 @@
+name: Selective Microservices Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      client-api: ${{ steps.changes.outputs.client-api }}
+      order-service: ${{ steps.changes.outputs.order-service }}
+      product-service: ${{ steps.changes.outputs.product-service }}
+    steps:
+    - name: 🔍 Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: 🔍 Detect changes
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          client-api:
+            - 'client-api/**'
+          order-service:
+            - 'order-service/**'
+          product-service:
+            - 'product-service/**'
+
+  deploy:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚀 Deploy to Digital Ocean
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DROPLET_IP }}
+        username: ${{ secrets.DROPLET_USER }}
+        password: ${{ secrets.DROPLET_PASSWORD }}
+        script: |
+          cd /root/pay-ton-kawa
+          git pull origin main
+          
+          SERVICES_TO_DEPLOY=""
+          
+          # Vérifier quels services ont changé
+          if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
+            echo "🔄 Client API modifié"
+            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY client-api-app"
+          fi
+          
+          if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
+            echo "🔄 Order Service modifié"
+            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY order-service"
+          fi
+          
+          if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
+            echo "🔄 Product Service modifié"
+            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY product-service"
+          fi
+          
+          if [ -z "$SERVICES_TO_DEPLOY" ]; then
+            echo "ℹ️ Aucun service à redéployer"
+            exit 0
+          fi
+          
+          echo "🔨 Rebuild des services modifiés: $SERVICES_TO_DEPLOY"
+          docker-compose build $SERVICES_TO_DEPLOY
+          
+          echo "♻️ Redéploiement des services: $SERVICES_TO_DEPLOY"
+          docker-compose stop $SERVICES_TO_DEPLOY
+          docker-compose rm -f $SERVICES_TO_DEPLOY
+          docker-compose up -d $SERVICES_TO_DEPLOY
+          
+          sleep 30
+          docker-compose ps
+          
+          echo "✅ Déploiement sélectif terminé !"
