@@ -136,7 +136,6 @@ public class UserController {
      * Met à jour un utilisateur (le user lui-même ou admin).
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @userService.isOwner(#id, authentication.name)")
     @Operation(summary = "Mettre à jour un utilisateur")
     public ResponseEntity<UserDto> updateUser(
             @Parameter(description = "ID de l'utilisateur") @PathVariable Long id,
