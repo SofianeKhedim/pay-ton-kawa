@@ -18,7 +18,6 @@ import jakarta.annotation.PostConstruct;
 @EnableJpaRepositories(basePackages = "com.example.clientapi.repository")
 @EnableTransactionManagement
 public class DatabaseConfig {
-    
     private static final Logger logger = LoggerFactory.getLogger(DatabaseConfig.class);
 
     @PostConstruct
