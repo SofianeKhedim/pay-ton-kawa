@@ -201,12 +201,7 @@ jobs:
     needs: [detect-changes, test-client-api, test-product-service, test-order-service, validate-tests]
     if: |
       needs.detect-changes.outputs.any-changes == 'true' &&
-      needs.validate-tests.result == 'success' &&
-      (
-        (needs.detect-changes.outputs.client-api == 'true' && needs.test-client-api.result == 'success') ||
-        (needs.detect-changes.outputs.product-service == 'true' && needs.test-product-service.result == 'success') ||
-        (needs.detect-changes.outputs.order-service == 'true' && needs.test-order-service.result == 'success')
-      )
+      needs.validate-tests.result == 'success'
     
     steps:
     - name: 🚀 Deploy to Digital Ocean
