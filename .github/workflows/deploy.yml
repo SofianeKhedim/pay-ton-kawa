@@ -228,7 +228,7 @@ jobs:
           # Vérifier quels services ont changé
           if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
             echo "🔄 Client API modifié"
-            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY client-api-app"
+            SERVICES_TO_DEPLOY="$SERVICES_TO_DEPLOY client-api"
           fi
           
           if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
