@@ -166,8 +166,11 @@ jobs:
         if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
           if [ "${{ needs.test-client-api.result }}" == "success" ]; then
             echo "✅ Client API: Tests passed"
+          elif [ "${{ needs.test-client-api.result }}" == "skipped" ]; then
+            echo "❌ Client API: Tests were skipped but service was modified!"
+            exit 1
           else
-            echo "❌ Client API: Tests failed"
+            echo "❌ Client API: Tests failed (${{ needs.test-client-api.result }})"
             exit 1
           fi
         fi
@@ -176,8 +179,11 @@ jobs:
         if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
           if [ "${{ needs.test-product-service.result }}" == "success" ]; then
             echo "✅ Product Service: Tests passed"
+          elif [ "${{ needs.test-product-service.result }}" == "skipped" ]; then
+            echo "❌ Product Service: Tests were skipped but service was modified!"
+            exit 1
           else
-            echo "❌ Product Service: Tests failed"
+            echo "❌ Product Service: Tests failed (${{ needs.test-product-service.result }})"
             exit 1
           fi
         fi
@@ -186,13 +192,17 @@ jobs:
         if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
           if [ "${{ needs.test-order-service.result }}" == "success" ]; then
             echo "✅ Order Service: Tests passed"
+          elif [ "${{ needs.test-order-service.result }}" == "skipped" ]; then
+            echo "❌ Order Service: Tests were skipped but service was modified!"
+            exit 1
           else
-            echo "❌ Order Service: Tests failed"
+            echo "❌ Order Service: Tests failed (${{ needs.test-order-service.result }})"
             exit 1
           fi
         fi
         
         echo "🎉 Tous les tests sont passés ! Prêt pour le déploiement."
+
 
   # DÉPLOIEMENT - Seulement si push sur main ET tous les tests passent
   deploy:
