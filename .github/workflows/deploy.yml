@@ -72,20 +72,6 @@ jobs:
       run: |
         chmod +x gradlew
         ./gradlew test -Dspring.profiles.active=test
-        
-    - name: 📊 Generate test report
-      working-directory: ./client-api
-      if: always()
-      run: ./gradlew jacocoTestReport
-      
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: client-api-test-results
-        path: |
-          client-api/build/reports/tests/test/
-          client-api/build/reports/jacoco/test/html/
 
   # Tests Product Service (Maven)
   test-product-service:
@@ -121,13 +107,6 @@ jobs:
         else
           mvn clean test
         fi
-        
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: product-service-test-results
-        path: product-service/target/surefire-reports/
 
   # Tests Order Service (Node.js)
   test-order-service:
@@ -172,76 +151,56 @@ jobs:
         NODE_ENV: test
         MONGODB_URI: mongodb://root:password@localhost:27017/test?authSource=admin
         JWT_SECRET: test-secret-key-for-ci
-        
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: order-service-test-results
-        path: |
-          order-service/coverage/
-          order-service/test-results.xml
 
-  # Build des services modifiés
-  build-services:
+  # Validation des tests
+  validate-tests:
     runs-on: ubuntu-latest
-    name: Build Services
+    name: Validate Tests
     needs: [detect-changes, test-client-api, test-product-service, test-order-service]
     if: always() && needs.detect-changes.outputs.any-changes == 'true'
     
     steps:
-    - name: 🔍 Checkout code
-      uses: actions/checkout@v4
-      
-    # Build Client API si modifié
-    - name: ☕ Set up JDK 17
-      if: needs.detect-changes.outputs.client-api == 'true' || needs.detect-changes.outputs.product-service == 'true'
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        
-    - name: 🔨 Build Client API
-      if: needs.detect-changes.outputs.client-api == 'true'
-      working-directory: ./client-api
+    - name: ✅ Check test results
       run: |
-        chmod +x gradlew
-        ./gradlew clean bootJar -x test
-        echo "✅ Client API built successfully"
+        echo "🔍 Vérification des résultats de tests..."
         
-    - name: 🔨 Build Product Service
-      if: needs.detect-changes.outputs.product-service == 'true'
-      working-directory: ./product-service
-      run: |
-        if [ -f "mvnw" ]; then
-          chmod +x mvnw
-          ./mvnw clean package -DskipTests
-        else
-          mvn clean package -DskipTests
+        # Vérifier Client API
+        if [ "${{ needs.detect-changes.outputs.client-api }}" == "true" ]; then
+          if [ "${{ needs.test-client-api.result }}" == "success" ]; then
+            echo "✅ Client API: Tests passed"
+          else
+            echo "❌ Client API: Tests failed"
+            exit 1
+          fi
         fi
-        echo "✅ Product Service built successfully"
         
-    # Build Order Service si modifié
-    - name: 🟢 Set up Node.js
-      if: needs.detect-changes.outputs.order-service == 'true'
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: order-service/package-lock.json
+        # Vérifier Product Service
+        if [ "${{ needs.detect-changes.outputs.product-service }}" == "true" ]; then
+          if [ "${{ needs.test-product-service.result }}" == "success" ]; then
+            echo "✅ Product Service: Tests passed"
+          else
+            echo "❌ Product Service: Tests failed"
+            exit 1
+          fi
+        fi
         
-    - name: 🔨 Build Order Service
-      if: needs.detect-changes.outputs.order-service == 'true'
-      working-directory: ./order-service
-      run: |
-        npm ci --production
-        echo "✅ Order Service built successfully"
+        # Vérifier Order Service
+        if [ "${{ needs.detect-changes.outputs.order-service }}" == "true" ]; then
+          if [ "${{ needs.test-order-service.result }}" == "success" ]; then
+            echo "✅ Order Service: Tests passed"
+          else
+            echo "❌ Order Service: Tests failed"
+            exit 1
+          fi
+        fi
+        
+        echo "🎉 Tous les tests sont passés ! Prêt pour le déploiement."
 
   # DÉPLOIEMENT - Seulement si push sur main ET tous les tests passent
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Digital Ocean
-    needs: [detect-changes, test-client-api, test-product-service, test-order-service, build-services]
+    needs: [detect-changes, test-client-api, test-product-service, test-order-service, validate-tests]
     if: |
       github.event_name == 'push' && 
       github.ref == 'refs/heads/main' && 
@@ -249,7 +208,7 @@ jobs:
       (needs.test-client-api.result == 'success' || needs.test-client-api.result == 'skipped') &&
       (needs.test-product-service.result == 'success' || needs.test-product-service.result == 'skipped') &&
       (needs.test-order-service.result == 'success' || needs.test-order-service.result == 'skipped') &&
-      needs.build-services.result == 'success'
+      needs.validate-tests.result == 'success'
     
     steps:
     - name: 🚀 Deploy to Digital Ocean
@@ -315,7 +274,6 @@ jobs:
       run: |
         echo "🎉 Déploiement réussi !"
         echo "Services déployés avec succès sur Digital Ocean"
-        echo "URL: https://votre-domaine.com"
 
   # Rapport final
   final-report:
