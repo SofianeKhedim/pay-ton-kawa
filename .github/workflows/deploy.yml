@@ -208,12 +208,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Digital Ocean
-    needs: [detect-changes]
+    needs: [detect-changes, validate-tests]
     if: |
-      needs.detect-changes.outputs.any-changes == 'true' &&
-      (needs.detect-changes.outputs.client-api != 'true' || needs.test-client-api.result == 'success') ||
-      (needs.detect-changes.outputs.product-service != 'true' || needs.test-product-service.result == 'success') ||
-      (needs.detect-changes.outputs.order-service != 'true' || needs.test-order-service.result == 'success')
+      (needs.test-client-api.result == 'success') ||
+      (eeds.test-product-service.result == 'success') ||
+      (needs.test-order-service.result == 'success')
     
     steps:
     - name: 🚀 Deploy to Digital Ocean
