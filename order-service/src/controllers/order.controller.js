@@ -8,7 +8,6 @@ const {
 
 async function create(req, res) {
   try {
-    
     const order = await createOrder(req.body);
     res.status(201).json(order);
   } catch (err) {
