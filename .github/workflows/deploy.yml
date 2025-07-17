@@ -5,8 +5,6 @@ name: PayeTonKawa CI/CD
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   # Détection des changements
@@ -202,8 +200,6 @@ jobs:
     name: Deploy to Digital Ocean
     needs: [detect-changes, test-client-api, test-product-service, test-order-service, validate-tests]
     if: |
-      github.event_name == 'push' && 
-      github.ref == 'refs/heads/main' && 
       needs.detect-changes.outputs.any-changes == 'true' &&
       needs.validate-tests.result == 'success' &&
       (
